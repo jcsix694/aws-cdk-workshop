@@ -1,17 +1,39 @@
+import { Template, Capture } from 'aws-cdk-lib/assertions';
 import * as cdk from 'aws-cdk-lib';
-import { Template, Match } from 'aws-cdk-lib/assertions';
-import * as CdkWorkshop from '../lib/cdk-workshop-stack';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { HitCounter }  from '../lib/hitcounter';
 
-test('SQS Queue and SNS Topic Created', () => {
-  const app = new cdk.App();
+test('DynamoDB Table Created', () => {
+  const stack = new cdk.Stack();
   // WHEN
-  const stack = new CdkWorkshop.CdkWorkshopStack(app, 'MyTestStack');
+  new HitCounter(stack, 'MyTestConstruct', {
+    downstream:  new lambda.Function(stack, 'TestFunction', {
+      runtime: lambda.Runtime.NODEJS_14_X,
+      handler: 'hello.handler',
+      code: lambda.Code.fromAsset('lambda')
+    })
+  });
   // THEN
 
   const template = Template.fromStack(stack);
+  template.resourceCountIs("AWS::DynamoDB::Table", 1);
+});
 
-  template.hasResourceProperties('AWS::SQS::Queue', {
-    VisibilityTimeout: 300
+test('DynamoDB Table Created With Encryption', () => {
+  const stack = new cdk.Stack();
+  // WHEN
+  new HitCounter(stack, 'MyTestConstruct', {
+    downstream:  new lambda.Function(stack, 'TestFunction', {
+      runtime: lambda.Runtime.NODEJS_14_X,
+      handler: 'hello.handler',
+      code: lambda.Code.fromAsset('lambda')
+    })
   });
-  template.resourceCountIs('AWS::SNS::Topic', 1);
+  // THEN
+  const template = Template.fromStack(stack);
+  template.hasResourceProperties('AWS::DynamoDB::Table', {
+    SSESpecification: {
+      SSEEnabled: true
+    }
+  });
 });
